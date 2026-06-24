@@ -1435,12 +1435,15 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
-    { name = "google-adk", extra = ["gcp"] },
+    { name = "google-adk" },
     { name = "opentelemetry-sdk" },
     { name = "pyyaml" },
 ]
 
 [package.optional-dependencies]
+deploy = [
+    { name = "google-adk", extra = ["gcp"] },
+]
 eval = [
     { name = "google-adk", extra = ["eval"] },
     { name = "google-cloud-aiplatform", extra = ["evaluation"] },
@@ -1456,13 +1459,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cryptography", specifier = ">=42.0,<46.0" },
+    { name = "google-adk", specifier = ">=2.0.0,<3.0.0" },
     { name = "google-adk", extras = ["eval"], marker = "extra == 'eval'", specifier = ">=2.0.0,<3.0.0" },
-    { name = "google-adk", extras = ["gcp"], specifier = ">=2.0.0,<3.0.0" },
+    { name = "google-adk", extras = ["gcp"], marker = "extra == 'deploy'", specifier = ">=2.0.0,<3.0.0" },
     { name = "google-cloud-aiplatform", extras = ["evaluation"], marker = "extra == 'eval'", specifier = ">=1.156.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.20.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
 ]
-provides-extras = ["eval"]
+provides-extras = ["deploy", "eval"]
 
 [package.metadata.requires-dev]
 dev = [

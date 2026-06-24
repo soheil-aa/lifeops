@@ -8,7 +8,7 @@ import google.auth
 import google.auth.exceptions
 from google.adk.apps import App
 
-from app.clients.fake import FakeEmailClient, FakeCalendarClient
+from app.clients.mcp import build_clients
 from app.core.action_bus import ActionBus
 from app.core.executor import Executor
 from app.core.policy_server import PolicyServer, load_policy
@@ -27,9 +27,7 @@ except google.auth.exceptions.DefaultCredentialsError:
     # ADC unavailable → offline/fake mode; real runs need ADC or GOOGLE_API_KEY
     pass
 
-# Phase 10 swaps these fakes for MCP-backed clients via build_clients().
-_email = FakeEmailClient()
-_calendar = FakeCalendarClient()
+_email, _calendar = build_clients()
 _policy = PolicyServer(load_policy("policy.yaml"))
 _state = SqliteStateStore(os.environ.get("LIFEOPS_DB", "lifeops.db"))
 _bus = ActionBus(_policy, _state, Executor(_email, _calendar), known_contacts=set())

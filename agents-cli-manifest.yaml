@@ -1,0 +1,11 @@
+name: "lifeops"
+acli_version: "0.5.0"
+agent_directory: "app"
+region: "us-east1"
+base_template: "adk"
+language: "python"
+create_params:
+  deployment_target: "none"
+  session_type: "in_memory"
+  cicd_runner: "skip"
+  agent_guidance_filename: "GEMINI.md"

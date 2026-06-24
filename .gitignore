@@ -3,3 +3,10 @@
 __pycache__/
 .env
 .google-agents-cli/
+.superpowers/
+.pytest_cache/
+*.pyc
+*.egg-info/
+dist/
+# uv.lock is intentionally tracked — do NOT add it here
+

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 import google.auth
+import google.auth.exceptions
 from google.adk.apps import App
 
 from app.clients.fake import FakeEmailClient, FakeCalendarClient
@@ -16,10 +17,15 @@ from app.coordinator.agent import build_coordinator
 from app.specialists.email_agent import build_email_agent
 from app.specialists.calendar_agent import build_calendar_agent
 
-_, project_id = google.auth.default()
-os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+try:
+    _, project_id = google.auth.default()
+    # project_id may be None when ADC credentials exist but have no project set
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+except google.auth.exceptions.DefaultCredentialsError:
+    # ADC unavailable → offline/fake mode; real runs need ADC or GOOGLE_API_KEY
+    pass
 
 # Phase 10 swaps these fakes for MCP-backed clients via build_clients().
 _email = FakeEmailClient()

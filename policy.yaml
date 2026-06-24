@@ -1,0 +1,23 @@
+# policy.yaml — starter tiered-risk defaults (deny-by-default).
+defaults: require_approval
+rules:
+  - action: email.read
+    verdict: allow
+  - action: calendar.read
+    verdict: allow
+  - action: email.draft_save
+    verdict: allow
+  - action: calendar.hold_tentative
+    verdict: allow
+  - action: email.send
+    verdict: require_approval
+    constraints:
+      recipients_in: ["@known-contacts"]
+      max_recipients: 5
+      no_pii_to_external: true
+  - action: calendar.create
+    verdict: require_approval
+  - action: calendar.accept_invite
+    verdict: require_approval
+  - action: "*"
+    verdict: deny

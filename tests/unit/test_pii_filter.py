@@ -23,3 +23,22 @@ def test_tokenize_then_restore_roundtrips():
 def test_contains_pii_true_and_false():
     assert contains_pii("reach me: a@b.com") is True
     assert contains_pii("let's meet tomorrow") is False
+
+
+def test_detect_is_distinct_on_duplicates():
+    """detect() should return each unique PII substring exactly once."""
+    found = detect("a@b.com and a@b.com")
+    assert found.count("a@b.com") == 1
+
+
+def test_tokenize_roundtrips_with_overlapping_values():
+    """tokenize/restore should roundtrip correctly with overlapping digit sequences."""
+    text = "card 1111222233334444 and 1111222233334444 also 4444333322221111"
+    redacted, mapping = tokenize(text)
+    restored = restore(redacted, mapping)
+
+    # Must roundtrip exactly
+    assert restored == text
+
+    # No corrupted placeholders should remain (no [[PII_ without closing ]])
+    assert "[[PII_" not in restored

@@ -28,12 +28,25 @@ def contains_pii(text: str) -> bool:
 
 
 def tokenize(text: str) -> tuple[str, dict[str, str]]:
+    detected_values = detect(text)
     mapping: dict[str, str] = {}
     redacted = text
-    for i, value in enumerate(detect(text), start=1):
+
+    # Sort by descending length to replace longer values first,
+    # preventing substring corruption when one detected value is a substring of another.
+    sorted_values = sorted(detected_values, key=len, reverse=True)
+
+    # Assign placeholders in detect() order for consistency
+    for i, value in enumerate(detected_values, start=1):
         placeholder = f"[[PII_{i}]]"
         mapping[placeholder] = value
+
+    # Perform substitutions in descending length order
+    for value in sorted_values:
+        # Find the placeholder assigned to this value
+        placeholder = next(k for k, v in mapping.items() if v == value)
         redacted = redacted.replace(value, placeholder)
+
     return redacted, mapping
 
 

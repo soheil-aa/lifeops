@@ -5,7 +5,7 @@ description = "Privacy-first personal concierge for email + calendar"
 authors = [{name = "Your Name", email = "your@email.com"}]
 dependencies = [
     "google-adk[gcp]>=2.0.0,<3.0.0",
-    "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
+    "opentelemetry-sdk>=1.20.0",
     "pyyaml>=6.0,<7.0",
     "cryptography>=42.0,<46.0",
 ]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.app_utils.telemetry import get_tracer
 from app.core import pii_filter
 from app.core.executor import Executor
 from app.core.policy_server import PolicyServer
@@ -31,17 +32,21 @@ class ActionBus:
         return {"known_contacts": self._known, "pii_to_external": pii_to_external}
 
     def propose(self, action: ProposedAction) -> Verdict:
-        verdict = self._policy.evaluate(action, self._build_context(action))
-        if verdict.decision == "allow":
-            self._executor.execute(action)
-            self._state.enqueue(action)
-            self._state.update_status(action.id, EXECUTED)
-        elif verdict.decision == "require_approval":
-            self._state.enqueue(action)
-        else:  # deny
-            self._state.enqueue(action)
-            self._state.update_status(action.id, BLOCKED)
-        return verdict
+        with get_tracer().start_as_current_span("action_bus.propose") as span:
+            verdict = self._policy.evaluate(action, self._build_context(action))
+            span.set_attribute("action", action.action)
+            span.set_attribute("decision", verdict.decision)
+            span.set_attribute("origin", action.origin)
+            if verdict.decision == "allow":
+                self._executor.execute(action)
+                self._state.enqueue(action)
+                self._state.update_status(action.id, EXECUTED)
+            elif verdict.decision == "require_approval":
+                self._state.enqueue(action)
+            else:  # deny
+                self._state.enqueue(action)
+                self._state.update_status(action.id, BLOCKED)
+            return verdict
 
     def approve(self, action_id: str) -> str:
         action = self._state.get(action_id)

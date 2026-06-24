@@ -49,12 +49,16 @@ class ActionBus:
             return verdict
 
     def approve(self, action_id: str) -> str:
-        action = self._state.get(action_id)
-        if action is None or action.status != PENDING:
-            raise ValueError(f"action {action_id} is not pending approval")
-        result = self._executor.execute(action)
-        self._state.update_status(action_id, EXECUTED)
-        return result
+        with get_tracer().start_as_current_span("action_bus.approve") as span:
+            action = self._state.get(action_id)
+            if action is None or action.status != PENDING:
+                raise ValueError(f"action {action_id} is not pending approval")
+            span.set_attribute("action", action.action)
+            span.set_attribute("origin", action.origin)
+            span.set_attribute("approved", True)
+            result = self._executor.execute(action)
+            self._state.update_status(action_id, EXECUTED)
+            return result
 
     def deny(self, action_id: str) -> None:
         """Mark action as DENIED. Silently no-ops on unknown ids (no error contract in v1)."""

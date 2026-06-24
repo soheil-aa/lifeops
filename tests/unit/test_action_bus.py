@@ -78,3 +78,38 @@ def test_approve_non_pending_raises(bus_setup):
     bus, _, _ = bus_setup
     with pytest.raises(ValueError):
         bus.approve("does-not-exist")
+
+
+# --- _build_context isolation tests for pii_to_external ---
+
+def test_build_context_pii_to_external_false_when_known_recipient(bus_setup):
+    """known recipient + PII body => pii_to_external is False (no external recipient)."""
+    bus, _, _ = bus_setup
+    a = ProposedAction(id="ctx1", action=EMAIL_SEND,
+                       params={"to": ["friend@known.com"], "subject": "x",
+                               "body": "ssn 4111 1111 1111 1111"},
+                       origin="email_agent")
+    ctx = bus._build_context(a)
+    assert ctx["pii_to_external"] is False
+
+
+def test_build_context_pii_to_external_true_when_external_and_pii(bus_setup):
+    """external recipient + PII body => pii_to_external is True."""
+    bus, _, _ = bus_setup
+    a = ProposedAction(id="ctx2", action=EMAIL_SEND,
+                       params={"to": ["external@unknown.com"], "subject": "x",
+                               "body": "ssn 4111 1111 1111 1111"},
+                       origin="email_agent")
+    ctx = bus._build_context(a)
+    assert ctx["pii_to_external"] is True
+
+
+def test_build_context_pii_to_external_false_when_external_no_pii(bus_setup):
+    """external recipient but body has NO PII => pii_to_external is False."""
+    bus, _, _ = bus_setup
+    a = ProposedAction(id="ctx3", action=EMAIL_SEND,
+                       params={"to": ["external@unknown.com"], "subject": "x",
+                               "body": "hello, no sensitive data here"},
+                       origin="email_agent")
+    ctx = bus._build_context(a)
+    assert ctx["pii_to_external"] is False

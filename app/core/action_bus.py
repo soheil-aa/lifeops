@@ -37,7 +37,6 @@ class ActionBus:
             self._state.enqueue(action)
             self._state.update_status(action.id, EXECUTED)
         elif verdict.decision == "require_approval":
-            action.status = PENDING
             self._state.enqueue(action)
         else:  # deny
             self._state.enqueue(action)
@@ -53,4 +52,5 @@ class ActionBus:
         return result
 
     def deny(self, action_id: str) -> None:
+        """Mark action as DENIED. Silently no-ops on unknown ids (no error contract in v1)."""
         self._state.update_status(action_id, DENIED)

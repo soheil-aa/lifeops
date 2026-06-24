@@ -108,5 +108,6 @@ Ask the user: Option A (simple single-project) or Option B (full CI/CD pipeline 
 - **Policy changes**: Edit `policy.yaml`, not Python code, to change what actions are allowed.
 - **Safety invariant**: Any change that allows a write to bypass the Action Bus chokepoint
   is a bug. Run `uv run pytest tests/integration/test_safety_invariant.py` after any core change.
-- **No secrets in code**: Credentials are managed via ADC or the Token Broker. Never
-  hardcode API keys, OAuth tokens, or passwords in source files.
+- **No secrets in code**: Credentials are managed via ADC. The Token Broker interface
+  (`app/core/token_broker.py`) is built and unit-tested but not yet wired into the live
+  execute path — never hardcode API keys, OAuth tokens, or passwords in source files.

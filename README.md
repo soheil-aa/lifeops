@@ -31,12 +31,12 @@ story can be made rigorous and auditable without sacrificing usability.
 | Unit | Responsibility | Note |
 |------|----------------|------|
 | **Coordinator** | Routes requests to specialists; assembles results; owns the conversation | Holds **no** Google credentials |
-| **Email specialist** | Gmail read / classify / draft / send; proposes actions only | Gmail-scoped credential via Token Broker |
-| **Calendar specialist** | Calendar read / conflict-check / create / accept; proposes actions only | Calendar-scoped credential via Token Broker |
+| **Email specialist** | Gmail read / classify / draft / send; proposes actions only | Uses Gmail MCP client (fake by default; real with `LIFEOPS_USE_MCP=1`) |
+| **Calendar specialist** | Calendar read / conflict-check / create / accept; proposes actions only | Uses Calendar MCP client (fake by default; real with `LIFEOPS_USE_MCP=1`) |
 | **Action Bus** | Single chokepoint: every proposed write passes through PII filter → Policy Server → approval queue | `app/core/action_bus.py` |
 | **Policy Server** | Pure function: `evaluate(action, context) → allow / require_approval / deny` | Driven by `policy.yaml` |
 | **PII Filter** | Tokenizes sensitive fields before content reaches the model or an external tool | `app/core/pii_filter.py` |
-| **Token Broker** | Vends short-lived, downscoped credentials per specialist per task (JIT) | `app/core/token_broker.py` |
+| **Token Broker** | JIT single-scope least-privilege credential interface (built + unit-tested) | `app/core/token_broker.py` — not yet wired into the live execute path (planned follow-up) |
 | **State Store** | SQLite: encrypted tokens, proposal queue, sessions | `app/core/state.py` |
 | **Trigger layer** | Interactive (CLI/playground) + ambient (schedule / new-mail poll) — both emit identical request objects | `app/triggers/` |
 | **Telemetry** | OpenTelemetry spans on every hop, verdict, redaction, and executed/denied action | `app/app_utils/telemetry.py` |
@@ -48,8 +48,7 @@ Trigger (user asks  OR  ambient event)
         │
         ▼
    Coordinator ──ADK sub-agents──► Specialist (Email / Calendar)
-        │                               │ requests JIT token from Token Broker
-        │                               │ reads via MCP client (read actions: policy-checked, usually allow)
+        │                               │ reads via MCP client (fake default; real with LIFEOPS_USE_MCP=1)
         │                               ▼
         │                      proposes world-changing action ──► Action Bus
         │                               │
@@ -77,10 +76,12 @@ are enforced in sequence:
 
 The chokepoint is proven by `tests/integration/test_safety_invariant.py`.
 
-**JIT Token Broker:** Each specialist requests a credential scoped to exactly what the task
-needs. The Coordinator holds no Google credentials, so a prompt-injected Coordinator cannot
-act directly — it can only propose, and proposals still hit the policy gate (Confused-Deputy
-defense).
+**Token Broker (v1 status):** The `TokenBroker` provides the JIT single-scope least-privilege
+*interface* (built and unit-tested in `app/core/token_broker.py`); wiring it into the live
+execute path is a planned follow-up. In v1 the Confused-Deputy / least-privilege defense is
+delivered by the architecture itself: the Coordinator holds no credentials, specialists can
+only *propose* (never execute), and the Action Bus enforces deny-by-default policy + human
+approval before any write is performed.
 
 ### Policy File (`policy.yaml`)
 
@@ -184,8 +185,8 @@ submission.
 | Course Concept | Where | How |
 |----------------|-------|-----|
 | **Multi-agent (ADK)** | `app/coordinator/agent.py`, `app/specialists/` | Coordinator + Email + Calendar as ADK `sub_agents` (A2A split documented as next step) |
-| **MCP Server** | `app/clients/mcp.py`, `app/clients/fake.py` | Gmail + Calendar tools via MCP; fake clients for offline testing |
-| **Security features** | `app/core/` + `policy.yaml` + `tests/integration/test_safety_invariant.py` | Policy Server, JIT token broker, PII filter, HITL gate — all enforced at the Action Bus chokepoint |
+| **MCP Server** | `app/clients/mcp.py`, `app/clients/fake.py` | MCP client interface + selector wired in; fake clients run by default — real Gmail/Calendar calls activate with `LIFEOPS_USE_MCP=1` during `agents-cli playground` |
+| **Security features** | `app/core/` + `policy.yaml` + `tests/integration/test_safety_invariant.py` | Policy Server, PII filter, HITL gate — all enforced at the Action Bus chokepoint; Coordinator holds no credentials; Token Broker interface built + unit-tested (live wiring is a follow-up) |
 | **Deployability** | `Dockerfile`, `agents-cli-manifest.yaml`, `pyproject.toml` | Deploy-ready interfaces; `agents-cli deploy` path; containerized via Dockerfile |
 
 ---
@@ -196,7 +197,7 @@ submission.
 
 - `policy.yaml` is the only external configuration; it contains no credentials.
 - `.env` is in `.gitignore`.
-- The Token Broker uses a local encrypted secret store; no cloud KMS is required for v1.
+- The Token Broker interface uses a local encrypted secret store; no cloud KMS is required for v1 (live wiring to the execute path is a planned follow-up).
 - Use a dedicated test Google account for demos to avoid personal-data exposure.
 
 ---
